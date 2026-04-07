@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "digital-forensics-lab"
+version = "1.0.0"
+description = "Multimodal Digital Forensics Lab — OpenEnv AI agent environment"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.11.7",
+    "openai>=2.7.2",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.28.1",
+    "openenv-core==0.2.3",
+    "requests>=2.25.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]

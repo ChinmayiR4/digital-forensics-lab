@@ -1,0 +1,109 @@
+name: digital-forensics-lab
+version: "1.0.0"
+description: >
+  Multimodal Digital Forensics Lab. An AI agent acts as an Enterprise Threat
+  Intelligence Analyst, investigating AI-generated content across code, audio,
+  image, text, and hybrid cases using a budget-constrained forensic toolbelt.
+
+author: OpenEnv Hackathon Submission
+tags: [openenv, forensics, multimodal, trust-and-safety, disinformation]
+
+tasks:
+  - name: task_easy
+    difficulty: easy
+    content_type: code
+    description: Python snippet with a hallucinated library. Run AST analyzer to find it.
+    max_steps: 10
+    baseline_score: 1.00
+
+  - name: task_medium
+    difficulty: medium
+    content_type: audio
+    description: CEO voicemail BEC attack. Clean Caller ID is the trap. Audio scan reveals ElevenLabs artifacts.
+    max_steps: 10
+    baseline_score: 1.00
+
+  - name: task_hard
+    difficulty: hard
+    content_type: hybrid
+    description: Fake startup site. Human-written text is the trap. StyleGAN image and deepfake video must be cited.
+    max_steps: 12
+    baseline_score: 1.00
+
+  - name: task_expert
+    difficulty: expert
+    content_type: image
+    description: Fake social media profile. EXIF reveals Stable Diffusion XL. Account patterns confirm.
+    max_steps: 10
+    baseline_score: 1.00
+
+  - name: task_human
+    difficulty: human
+    content_type: text
+    description: >
+      Genuine human-written legal memo flagged as suspicious.
+      High perplexity and internal jargon confirm human authorship.
+      Tests false-positive avoidance — the cardinal sin penalty.
+      An agent that blindly says AI-generated scores 0.00.
+    max_steps: 8
+    baseline_score: 1.00
+
+action_space:
+  tools:
+    - {name: analyze_metadata,               cost: 0.15, relevant_for: [code, audio, image, video, text, hybrid]}
+    - {name: reverse_image_search,           cost: 0.15, relevant_for: [image, hybrid]}
+    - {name: text_perplexity_scan,           cost: 0.15, relevant_for: [code, text, hybrid]}
+    - {name: check_domain_age,               cost: 0.15, relevant_for: [text, hybrid, audio]}
+    - {name: run_audio_frequency_scan,       cost: 0.15, relevant_for: [audio, hybrid, video]}
+    - {name: run_ast_code_analyzer,          cost: 0.15, relevant_for: [code, hybrid]}
+    - {name: run_temporal_consistency_check, cost: 0.15, relevant_for: [video, hybrid]}
+  budget:
+    starting: 1.0
+    per_tool: 0.15
+    note: >
+      Running all 7 tools costs 1.05 — more than the starting budget.
+      Maximum safe tool calls before forced depletion: 6.
+      Agents must choose tools carefully.
+  verdict:
+    - name: submit_verdict
+      params: [is_ai_generated, confidence, critical_evidence_keys]
+      terminates_episode: true
+
+observation_space:
+  type: CaseFileState
+  fields:
+    case_id:            {type: str,   description: Unique case identifier}
+    content_type:       {type: str,   description: "code | audio | image | video | text | hybrid"}
+    content_data:       {type: str,   description: The suspicious content (text representation)}
+    budget_remaining:   {type: float, description: "Starts at 1.0, decreases 0.15 per tool"}
+    gathered_evidence:  {type: dict,  description: "tool_name -> JSON output (relevant tools only)"}
+    step_count:         {type: int,   description: Number of actions taken so far}
+    done:               {type: bool,  description: True when episode ended}
+    last_action_error:  {type: str,   description: Error from last action or null}
+
+reward_structure:
+  step_rewards:
+    range: [-1.0, 1.0]
+    critical_tool_used: +0.50
+    relevant_tool_used: +0.20
+    irrelevant_tool_used: -0.20
+    unknown_action: -0.20
+    duplicate_tool_used: -0.40
+    budget_depleted: -1.00
+    note: >
+      Irrelevant tools do NOT store evidence in gathered_evidence.
+      The step penalty and grader evidence check are now fully consistent.
+  task_score:
+    range: (0.0, 1.0)  # strictly exclusive
+    scoring_method: proportional_critical_evidence_ratio
+    correct_all_critical_evidence: 1.00
+    correct_majority_critical_evidence: "0.75-0.99 (scaled by ratio)"
+    correct_some_critical_evidence: "0.50-0.74 (scaled by ratio)"
+    correct_partial_noncritical_evidence: 0.60
+    correct_no_evidence: 0.50
+    false_negative: 0.10
+    false_positive: 0.00
+
+episode_termination:
+  - submit_verdict called
+  - budget_remaining <= 0
